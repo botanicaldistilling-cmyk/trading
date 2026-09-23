@@ -76,3 +76,15 @@ def test_walk_forward_windows():
     w = list(walk_forward_windows("2018-01-01", "2025-12-31", 3, 1))
     assert len(w) == 5
     assert w[0][2] == pd.Timestamp("2021-01-01") and w[-1][3] == pd.Timestamp("2025-12-31")
+
+
+def test_compact_storage_roundtrip(tmp_path):
+    from tradelab.data.dukascopy import load_compact, save_compact
+    idx = pd.date_range("2024-01-02", periods=4, freq="1min", tz="UTC")
+    df = pd.DataFrame({"open": [2034.123, 2034.2, 2034.0, 2033.9], "high": [2034.3] * 4,
+                       "low": [2033.8] * 4, "close": [2034.2, 2034.0, 2033.9, 2034.1],
+                       "spread": [0.25, 0.3, 0.25, 0.2]}, index=idx)
+    save_compact(df, tmp_path / "x.parquet", 1000)
+    out = load_compact(tmp_path / "x.parquet")
+    assert (out.index == idx).all()
+    np.testing.assert_allclose(out[df.columns].to_numpy(), df.to_numpy(), atol=1e-9)

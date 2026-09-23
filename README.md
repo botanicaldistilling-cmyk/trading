@@ -29,15 +29,29 @@ python -m venv .venv
 
 ## Getting data
 
-**1. Dukascopy (free, many years of M1 bid+ask).**
+**1. Dukascopy (free, many years of M1 bid+ask): run this on your PC.**
 
-```bash
-.venv/bin/python scripts/download_dukascopy.py --symbols EURUSD GBPJPY XAUUSD NAS100 US30 --start 2018
+Dukascopy blocks the cloud environment's shared IP (HTTP 429), so the
+download has to run from your own internet connection. The files are stored
+compactly (integer prices + zstd, about 2–4 MB per symbol-year) so they can be
+committed and used by the cloud session.
+
+Windows (PowerShell, from the repo folder):
+
+```powershell
+git checkout claude/the5ers-trading-portfolio-q4043n
+git pull
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python scripts\download_dukascopy.py --symbols EURUSD GBPJPY XAUUSD NAS100 US30 --start 2018
+git add data/m1
+git commit -m "Add Dukascopy M1 data 2018+"
+git push
 ```
 
-Writes `data/m1/<SYMBOL>/<YEAR>.parquet` (UTC), about 10–20 MB per symbol per year.
-Re-running resumes from the cache in `data/raw/`. Expect roughly 10–30
-minutes per symbol.
+Takes roughly 10–30 minutes per symbol. If it stops (network, throttling),
+just run the same command again: finished days are cached in `data/raw/`.
+GBPJPY also pulls USDJPY for the JPY to USD conversion.
 
 **2. Your MT5 terminal (exact broker specs, spreads, news calendar).**
 

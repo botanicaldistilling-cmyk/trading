@@ -25,7 +25,8 @@ def load_m1(inst: Instrument, start: str | None = None, end: str | None = None,
         files = [f for f in files if int(f.stem) <= pd.Timestamp(end).year]
     if not files:
         raise FileNotFoundError(f"No M1 data for {inst.name} under {root / inst.name}")
-    df = pd.concat(pd.read_parquet(f) for f in files).sort_index()
+    from .dukascopy import load_compact
+    df = pd.concat(load_compact(f) for f in files).sort_index()
     df.index = utc_to_server(pd.DatetimeIndex(df.index))
     df = df[~df.index.duplicated()]
     if start:

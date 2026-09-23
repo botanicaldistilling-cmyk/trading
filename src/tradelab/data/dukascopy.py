@@ -73,7 +73,12 @@ def encode_bi5(df: pd.DataFrame, day: dt.date, divisor: float) -> bytes:
     return lzma.compress(bytes(out), format=lzma.FORMAT_ALONE)
 
 
-def _fetch(url: str, cache: Path, retries: int = 5) -> bytes:
+def _fetch(url: str, cache: Path, retries: int = 8) -> bytes:
+    """Fetch one file, cached on disk. 404 = no data that day (cached as empty).
+
+    429/503 mean Dukascopy is throttling: we back off (up to ~4 min) and never
+    cache those responses, so a re-run picks up where it stopped.
+    """
     if cache.exists():
         return cache.read_bytes()
     delay = 2.0
@@ -93,7 +98,7 @@ def _fetch(url: str, cache: Path, retries: int = 5) -> bytes:
             if attempt == retries - 1:
                 raise
         time.sleep(delay)
-        delay *= 2
+        delay = min(delay * 2, 120)
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_bytes(blob)
     return blob
@@ -142,6 +147,36 @@ def download_year(inst: Instrument, year: int, out_dir: Path | None = None,
     df = df[~df.index.duplicated()]
     validate(df, inst)
     path = out_dir / inst.name / f"{year}.parquet"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    df.astype("float64").to_parquet(path)
+    save_compact(df, path, inst.dukascopy_divisor)
     return path
+
+
+def save_compact(df: pd.DataFrame, path: Path, scale: float) -> None:
+    """Store prices as integers (price * scale) with zstd: small enough for git.
+
+    Roughly 3-6 MB per symbol-year instead of ~20 MB as float parquet.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    ts = pd.DatetimeIndex(df.index).tz_convert("UTC").tz_localize(None).as_unit("s")
+    cols = {"time": pa.array(ts.asi8, pa.int64())}
+    for c in ("open", "high", "low", "close", "spread"):
+        cols[c] = pa.array(np.round(df[c].to_numpy(dtype=float) * scale).astype(np.int32))
+    table = pa.table(cols).replace_schema_metadata({"scale": str(scale), "tz": "UTC"})
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table, path, compression="zstd", compression_level=19, use_dictionary=False)
+
+
+def load_compact(path: Path) -> pd.DataFrame:
+    """Inverse of save_compact -> float prices, UTC index."""
+    import pyarrow.parquet as pq
+
+    table = pq.read_table(path)
+    meta = table.schema.metadata or {}
+    scale = float(meta.get(b"scale", b"1"))
+    df = table.to_pandas()
+    idx = pd.to_datetime(df.pop("time").to_numpy(), unit="s", utc=True)
+    out = pd.DataFrame({c: df[c].to_numpy(dtype=float) / scale for c in df.columns}, index=idx)
+    return out
