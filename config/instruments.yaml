@@ -6,10 +6,14 @@
 #
 # Prices are in quote currency. "point" is the smallest price step used for
 # spreads/slippage. Session hours are server time (EET/EEST).
+# Spread snapshot (Market Watch, one moment, not an average; bid/ask shown):
+#   EURUSD 0.0 pip, GBPJPY 2.3 pips, XAUUSD $0.52, NAS100 1.98 pts,
+#   US30 3.36 pts, XTIUSD $0.08, BTCUSD $3.8. Hourly medians come from the MT5 export.
+#
 # Commission: per_lot_rt = USD per lot round trip; pct_notional_rt = % of notional round trip.
 
 EURUSD:
-  mt5_symbol: EURUSD            # CONFIRM
+  mt5_symbol: EURUSD            # confirmed (Market Watch)
   dukascopy: {code: EURUSD, divisor: 100000, sane_range: [0.8, 1.6]}
   contract_size: 100000
   quote_ccy: USD
@@ -25,7 +29,7 @@ EURUSD:
   verified: false
 
 GBPJPY:
-  mt5_symbol: GBPJPY            # CONFIRM
+  mt5_symbol: GBPJPY            # confirmed (Market Watch)
   dukascopy: {code: GBPJPY, divisor: 1000, sane_range: [100, 260]}
   contract_size: 100000
   quote_ccy: JPY
@@ -42,7 +46,7 @@ GBPJPY:
   verified: false
 
 XAUUSD:
-  mt5_symbol: XAUUSD            # CONFIRM
+  mt5_symbol: XAUUSD            # confirmed (Market Watch)
   dukascopy: {code: XAUUSD, divisor: 1000, sane_range: [1000, 6000]}
   contract_size: 100
   quote_ccy: USD
@@ -58,7 +62,7 @@ XAUUSD:
   verified: false
 
 NAS100:
-  mt5_symbol: NAS100            # CONFIRM
+  mt5_symbol: NAS100            # confirmed (Market Watch)
   dukascopy: {code: USA100IDXUSD, divisor: 1000, sane_range: [5000, 40000]}
   contract_size: 1
   quote_ccy: USD
@@ -73,8 +77,24 @@ NAS100:
   session: {open: "01:05", close: "23:50"}
   verified: false
 
-USOIL:
-  mt5_symbol: USOIL             # CONFIRM
+US30:
+  mt5_symbol: US30              # confirmed (Market Watch)
+  dukascopy: {code: USA30IDXUSD, divisor: 1000, sane_range: [15000, 80000]}
+  contract_size: 1              # CONFIRM (assumed same as NAS100)
+  quote_ccy: USD
+  point: 0.01
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: per_lot_rt, value: 0.0}
+  spread_markup_points: 0
+  slippage_points: {entry: 200, stop: 500}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: friday, weekend_multiplier: 3}
+  margin_per_lot_usd: null
+  session: {open: "01:05", close: "23:50"}
+  verified: false
+
+XTIUSD:
+  mt5_symbol: XTIUSD            # confirmed (Market Watch), WTI crude
   dukascopy: {code: LIGHTCMDUSD, divisor: 1000, sane_range: [-50, 200]}
   contract_size: 100
   quote_ccy: USD
@@ -90,7 +110,7 @@ USOIL:
   verified: false
 
 BTCUSD:
-  mt5_symbol: BTCUSD            # CONFIRM
+  mt5_symbol: BTCUSD            # confirmed (Market Watch)
   dukascopy: {code: BTCUSD, divisor: 10, sane_range: [1000, 300000]}
   contract_size: 1
   quote_ccy: USD

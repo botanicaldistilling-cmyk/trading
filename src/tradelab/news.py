@@ -18,7 +18,8 @@ CURRENCIES = {
     "GBPJPY": ["GBP", "JPY"],
     "XAUUSD": ["USD"],
     "NAS100": ["USD"],
-    "USOIL": ["USD"],
+    "XTIUSD": ["USD"],
+    "US30": ["USD"],
     "BTCUSD": ["USD"],
 }
 

@@ -32,7 +32,7 @@ python -m venv .venv
 **1. Dukascopy (free, many years of M1 bid+ask).**
 
 ```bash
-.venv/bin/python scripts/download_dukascopy.py --symbols EURUSD GBPJPY XAUUSD NAS100 --start 2018
+.venv/bin/python scripts/download_dukascopy.py --symbols EURUSD GBPJPY XAUUSD NAS100 US30 --start 2018
 ```
 
 Writes `data/m1/<SYMBOL>/<YEAR>.parquet` (UTC), about 10–20 MB per symbol per year.

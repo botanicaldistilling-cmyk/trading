@@ -15,7 +15,7 @@
 #property version   "1.00"
 #property script_show_inputs
 
-input string   InpSymbols         = "EURUSD,GBPJPY,XAUUSD,NAS100,USOIL,BTCUSD,USDJPY"; // symbols to export (exact broker names)
+input string   InpSymbols         = "EURUSD,GBPJPY,XAUUSD,NAS100,US30,XTIUSD,BTCUSD,USDJPY"; // symbols to export (exact broker names)
 input datetime InpFrom            = D'2018.01.01';
 input datetime InpTo              = D'2030.01.01';
 input bool     InpExportBars      = true;
