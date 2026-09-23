@@ -11,12 +11,17 @@ survivors to one MT5 Expert Advisor.
 | 3 | Portfolio, correlation, Monte Carlo of the challenge | |
 | 4 | MQL5 EA with shared risk manager | |
 
-## Challenge rules used (`config/challenge.yaml`)
+## Challenge rules used (`config/challenge.yaml`): The5ers Hyper Growth, $5K
 
-5K account, 2 steps, +10% target each step, **daily loss 3%** of the higher
-of start-of-day balance/equity, **max loss $300 static**, leverage 1:30,
-no orders ±2 min around high-impact news. Our own internal stops are tighter:
-stop for the day at -2%, stop entirely at -$250. Change them in the YAML.
+- Every level: **+10% target**, completed immediately on reaching it, no minimum days.
+  The next level starts at **double the size** (5K → 10K → 20K … up to $4M) with the same rules.
+- **Daily pause 3%**: trading stops for the day. This is not a breach.
+- **Max loss 6% static** ($300 on 5K): this is a breach.
+- Leverage 1:30. Weekend holding is allowed, but indices carry a high weekend swap.
+- News trading is allowed (no bracket orders around news). We still skip ±5 min
+  around high-impact news by choice. Set `news.enabled: false` to change that.
+- An account expires after 30 days with no trading.
+- Our internal stops are tighter: stop for the day at -2%, stop entirely at -5%.
 
 ## Setup
 

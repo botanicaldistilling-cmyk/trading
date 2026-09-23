@@ -1,40 +1,49 @@
-# Challenge rules as you gave them (5K, 2 steps). All amounts are checked in
-# Stage 3 (Monte Carlo) and enforced by the EA's risk manager in Stage 4.
-# CONFIRM: these differ from the first brief (5% daily / 10% max). The values
-# below are the latest ones you sent and are what the code uses.
+# The5ers Hyper Growth, $5K start (confirmed by you).
+# Used by the Stage 3 Monte Carlo and by the EA's risk manager in Stage 4.
+program: hyper_growth
+
 account:
   initial_balance: 5000
   currency: USD
   leverage: 30
+  max_evaluation_capital: 40000        # across all your evaluation accounts
 
-steps:
-  - name: step1
-    profit_target_pct: 10.0
-  - name: step2
-    profit_target_pct: 10.0
-funded:
-  first_payout_target_pct: 5.0
+# Every level (evaluation and funded) has the same rules. Reaching the target
+# completes the level immediately and the next level starts at DOUBLE the size
+# (5K -> 10K -> 20K ... up to $4M).
+level:
+  profit_target_pct: 10.0
+  size_multiplier_on_pass: 2.0
+  max_size: 4000000
+  min_trading_days: 0                  # none for level 1
 
-min_trading_days_per_step: 3          # CONFIRM for this program
+# Daily PAUSE, not a breach: if equity falls 3% below the start-of-day
+# reference, positions are closed and trading pauses until the next day.
+daily_pause:
+  limit_pct: 3.0
+  reference: max_balance_equity        # CONFIRM: max(start-of-day balance, equity)
+  reset: server_midnight               # CONFIRM: 00:00 server time
 
-daily_loss:
-  limit_pct: 3.0                      # of start-of-day reference
-  reference: max_balance_equity       # max(start-of-day balance, start-of-day equity)
-  reset: server_midnight              # 00:00 server time (EET/EEST)
-
+# Breach: equity may never go below the level's starting size minus 6%.
 max_loss:
-  limit_usd: 300                      # static: equity may never go below 4,700
+  limit_pct: 6.0                       # $300 on the 5K level
   type: static
 
+# Inactive for more than 30 consecutive days -> account expires.
+inactivity_days: 30
+
+# News trading is allowed on Hyper Growth (no bracket/straddle orders
+# around news). The blackout below is OUR choice, to avoid news spikes and
+# slippage. Set enabled: false to trade through news.
 news:
-  blackout_minutes_before: 2          # firm rule
-  blackout_minutes_after: 2
-  # Our own safety margin (applied by the backtester and EA):
+  enabled: true
   safety_minutes_before: 5
   safety_minutes_after: 5
   impact: high
 
+weekend_holding: allowed               # indices carry high weekend swap
+
 # Our own internal stops, tighter than the firm's limits.
 risk_manager:
-  daily_stop_pct: 2.0                 # stop trading for the day (firm limit 3%)
-  hard_stop_usd: 250                  # stop trading entirely (firm limit $300)
+  daily_stop_pct: 2.0                  # stop for the day before the 3% firm pause
+  hard_stop_pct: 5.0                   # stop entirely before the 6% breach

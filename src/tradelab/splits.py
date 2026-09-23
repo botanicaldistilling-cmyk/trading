@@ -70,7 +70,7 @@ def objective(stats: dict, min_trades: int = 30) -> float:
 
 def walk_forward(strategy: Strategy, grid: dict[str, list], m1: pd.DataFrame, inst: Instrument,
                  cfg: BacktestConfig, start: str, end: str, train_years: int = 3,
-                 test_years: int = 1) -> dict:
+                 test_years: int = 1, results: dict | None = None) -> dict:
     """Pick the best params per training window, record the next test window's trades.
 
     Every parameter set is backtested once over the full range; windows are then
@@ -78,10 +78,11 @@ def walk_forward(strategy: Strategy, grid: dict[str, list], m1: pd.DataFrame, in
     use past bars (indicator warm-up apart).
     """
     combos = param_grid(grid)
-    results: dict[int, BacktestResult] = {}
-    for k, p in enumerate(combos):
-        strat = replace(strategy, params=strategy.params | p)
-        results[k] = run_backtest(strat, m1, inst, cfg)
+    if results is None:  # {combo index: BacktestResult}, may be passed in to avoid re-running
+        results = {}
+        for k, p in enumerate(combos):
+            strat = replace(strategy, params=strategy.params | p)
+            results[k] = run_backtest(strat, m1, inst, cfg)
 
     windows, oos_trades = [], []
     for tr_s, tr_e, te_s, te_e in walk_forward_windows(start, end, train_years, test_years):

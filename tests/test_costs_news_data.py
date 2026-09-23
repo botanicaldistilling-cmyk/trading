@@ -16,8 +16,9 @@ def test_configs_load():
     insts = load_instruments()
     assert {"EURUSD", "XAUUSD", "NAS100"} <= set(insts)
     ch = load_challenge()
-    assert ch["max_loss"]["limit_usd"] == 300
-    assert ch["risk_manager"]["daily_stop_pct"] < ch["daily_loss"]["limit_pct"]
+    assert ch["max_loss"]["limit_pct"] * ch["account"]["initial_balance"] / 100 == 300
+    assert ch["risk_manager"]["daily_stop_pct"] < ch["daily_pause"]["limit_pct"]
+    assert ch["risk_manager"]["hard_stop_pct"] < ch["max_loss"]["limit_pct"]
 
 
 def test_floor_lots_and_min_lot(eurusd):
