@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Market data is large and re-downloadable; keep it out of git by default.
+data/raw/
+data/m1/
+data/bars/
+reports/*.csv

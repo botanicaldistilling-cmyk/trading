@@ -1,0 +1,40 @@
+# Challenge rules as you gave them (5K, 2 steps). All amounts are checked in
+# Stage 3 (Monte Carlo) and enforced by the EA's risk manager in Stage 4.
+# CONFIRM: these differ from the first brief (5% daily / 10% max). The values
+# below are the latest ones you sent and are what the code uses.
+account:
+  initial_balance: 5000
+  currency: USD
+  leverage: 30
+
+steps:
+  - name: step1
+    profit_target_pct: 10.0
+  - name: step2
+    profit_target_pct: 10.0
+funded:
+  first_payout_target_pct: 5.0
+
+min_trading_days_per_step: 3          # CONFIRM for this program
+
+daily_loss:
+  limit_pct: 3.0                      # of start-of-day reference
+  reference: max_balance_equity       # max(start-of-day balance, start-of-day equity)
+  reset: server_midnight              # 00:00 server time (EET/EEST)
+
+max_loss:
+  limit_usd: 300                      # static: equity may never go below 4,700
+  type: static
+
+news:
+  blackout_minutes_before: 2          # firm rule
+  blackout_minutes_after: 2
+  # Our own safety margin (applied by the backtester and EA):
+  safety_minutes_before: 5
+  safety_minutes_after: 5
+  impact: high
+
+# Our own internal stops, tighter than the firm's limits.
+risk_manager:
+  daily_stop_pct: 2.0                 # stop trading for the day (firm limit 3%)
+  hard_stop_usd: 250                  # stop trading entirely (firm limit $300)

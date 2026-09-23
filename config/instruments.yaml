@@ -1,0 +1,106 @@
+# Instrument specs for The5ers MT5 + the matching Dukascopy feed used for research.
+#
+# verified: false means the value is a placeholder. Run the MT5 export script
+# (mql5/Scripts/ExportResearchData.mq5) on your terminal: it writes the exact
+# symbol names, contract sizes, swaps and margin per lot, and we update this file.
+#
+# Prices are in quote currency. "point" is the smallest price step used for
+# spreads/slippage. Session hours are server time (EET/EEST).
+# Commission: per_lot_rt = USD per lot round trip; pct_notional_rt = % of notional round trip.
+
+EURUSD:
+  mt5_symbol: EURUSD            # CONFIRM
+  dukascopy: {code: EURUSD, divisor: 100000, sane_range: [0.8, 1.6]}
+  contract_size: 100000
+  quote_ccy: USD
+  point: 0.00001
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: per_lot_rt, value: 4.0}
+  spread_markup_points: 0       # extra on top of Dukascopy's historical spread
+  slippage_points: {entry: 2, stop: 5}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: wednesday, weekend_multiplier: 1}
+  margin_per_lot_usd: null      # from MT5 export (OrderCalcMargin)
+  session: {open: "00:05", close: "23:55"}
+  verified: false
+
+GBPJPY:
+  mt5_symbol: GBPJPY            # CONFIRM
+  dukascopy: {code: GBPJPY, divisor: 1000, sane_range: [100, 260]}
+  contract_size: 100000
+  quote_ccy: JPY
+  usd_conversion: {symbol: USDJPY, invert: true, fallback_rate: 0.0068}
+  point: 0.001
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: per_lot_rt, value: 4.0}
+  spread_markup_points: 0
+  slippage_points: {entry: 3, stop: 8}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: wednesday, weekend_multiplier: 1}
+  margin_per_lot_usd: null
+  session: {open: "00:05", close: "23:55"}
+  verified: false
+
+XAUUSD:
+  mt5_symbol: XAUUSD            # CONFIRM
+  dukascopy: {code: XAUUSD, divisor: 1000, sane_range: [1000, 6000]}
+  contract_size: 100
+  quote_ccy: USD
+  point: 0.01
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: pct_notional_rt, value: 0.002}   # PLACEHOLDER: "percentage based"
+  spread_markup_points: 0
+  slippage_points: {entry: 10, stop: 30}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: wednesday, weekend_multiplier: 1}
+  margin_per_lot_usd: null
+  session: {open: "01:05", close: "23:50"}
+  verified: false
+
+NAS100:
+  mt5_symbol: NAS100            # CONFIRM
+  dukascopy: {code: USA100IDXUSD, divisor: 1000, sane_range: [5000, 40000]}
+  contract_size: 1
+  quote_ccy: USD
+  point: 0.01
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: per_lot_rt, value: 0.0}
+  spread_markup_points: 0
+  slippage_points: {entry: 100, stop: 300}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: friday, weekend_multiplier: 3}
+  margin_per_lot_usd: null
+  session: {open: "01:05", close: "23:50"}
+  verified: false
+
+USOIL:
+  mt5_symbol: USOIL             # CONFIRM
+  dukascopy: {code: LIGHTCMDUSD, divisor: 1000, sane_range: [-50, 200]}
+  contract_size: 100
+  quote_ccy: USD
+  point: 0.001
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: pct_notional_rt, value: 0.002}   # PLACEHOLDER
+  spread_markup_points: 0
+  slippage_points: {entry: 20, stop: 50}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: friday, weekend_multiplier: 10}
+  margin_per_lot_usd: null
+  session: {open: "01:05", close: "23:50"}
+  verified: false
+
+BTCUSD:
+  mt5_symbol: BTCUSD            # CONFIRM
+  dukascopy: {code: BTCUSD, divisor: 10, sane_range: [1000, 300000]}
+  contract_size: 1
+  quote_ccy: USD
+  point: 0.01
+  min_lot: 0.01
+  lot_step: 0.01
+  commission: {type: pct_notional_rt, value: 0.002}   # PLACEHOLDER
+  spread_markup_points: 0
+  slippage_points: {entry: 1000, stop: 3000}
+  swap_per_lot: {long: 0.0, short: 0.0, triple_day: none, weekend_multiplier: 1}
+  margin_per_lot_usd: null
+  session: {open: "00:05", close: "23:55"}   # also trades weekends 00:10-23:50
+  verified: false
