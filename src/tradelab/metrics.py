@@ -46,7 +46,16 @@ def summarize(res: BacktestResult, start=None, end=None) -> dict:
         "max_losing_streak": int(_longest_run(r <= 0)),
         "avg_bars_held": float(t["bars_held"].mean()),
         "t_stat": float(r.mean() / (r.std(ddof=1) / np.sqrt(len(r)))) if len(r) > 1 and r.std() > 0 else 0.0,
+        "sharpe_daily": _daily_sharpe(d),
     }
+
+
+def _daily_sharpe(d: pd.DataFrame) -> float:
+    """Annualised Sharpe of daily P&L (% of initial), counting flat days as 0."""
+    x = d["pnl_pct"].to_numpy() if len(d) else np.array([])
+    if len(x) < 20 or x.std(ddof=1) == 0:
+        return float("nan")
+    return float(x.mean() / x.std(ddof=1) * np.sqrt(252))
 
 
 def _longest_run(mask: np.ndarray) -> int:
@@ -61,7 +70,7 @@ def compare_table(rows: dict[str, dict]) -> pd.DataFrame:
     """Side-by-side table, e.g. {"in-sample": summarize(...), "out-of-sample": ...}."""
     cols = ["trades", "trades_per_month", "win_rate", "avg_r", "avg_r_pre_comm", "profit_factor",
             "total_r", "max_dd_r", "max_dd_pct", "worst_day_pct", "worst_intraday_pct",
-            "max_losing_streak", "t_stat"]
+            "max_losing_streak", "t_stat", "sharpe_daily"]
     df = pd.DataFrame(rows).T
     return df[[c for c in cols if c in df.columns]]
 
@@ -71,7 +80,7 @@ def format_table(df: pd.DataFrame) -> str:
         "trades": "{:.0f}", "trades_per_month": "{:.1f}", "win_rate": "{:.1%}", "avg_r": "{:+.3f}",
         "avg_r_pre_comm": "{:+.3f}", "profit_factor": "{:.2f}", "total_r": "{:+.1f}", "max_dd_r": "{:.1f}",
         "max_dd_pct": "{:.1f}%", "worst_day_pct": "{:.2f}%", "worst_intraday_pct": "{:.2f}%",
-        "max_losing_streak": "{:.0f}", "t_stat": "{:+.2f}",
+        "max_losing_streak": "{:.0f}", "t_stat": "{:+.2f}", "sharpe_daily": "{:+.2f}",
     }
     out = df.copy().astype(object)
     for c, f in fmt.items():

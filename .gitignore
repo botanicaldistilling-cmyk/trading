@@ -7,3 +7,4 @@ data/raw/
 data/bars/
 reports/*.csv
 !reports/stage2/*.csv
+!reports/trials.csv

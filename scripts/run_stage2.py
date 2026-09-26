@@ -53,6 +53,27 @@ def usd_rate_for(inst):
     return 1.0 / px if inst.usd_conversion_invert else px
 
 
+def log_trials(strategy: str, symbol: str, grid: pd.DataFrame) -> int:
+    """Append every parameter set evaluated to reports/trials.csv (BRAIN.md R7.3).
+
+    Returns how many sets have ever been tried for this strategy/market, so
+    the report shows the true number of attempts, including re-runs.
+    """
+    path = ROOT / "reports" / "trials.csv"
+    rows = grid.drop(columns="score").copy()
+    params = [c for c in rows.columns if not c.startswith(("is_", "oos_", "skipped"))]
+    rows.insert(0, "params", rows[params].astype(str).agg(", ".join, axis=1))
+    rows = rows.drop(columns=params)
+    rows.insert(0, "symbol", symbol)
+    rows.insert(0, "strategy", strategy)
+    rows.insert(0, "run_at", pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"))
+    old = pd.read_csv(path) if path.exists() else pd.DataFrame()
+    allrows = pd.concat([old, rows], ignore_index=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    allrows.to_csv(path, index=False)
+    return int(((allrows["strategy"] == strategy) & (allrows["symbol"] == symbol)).sum())
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", nargs="*", help="symbols to run")
@@ -95,6 +116,7 @@ def main():
                               "oos_avg_r": s_oos.get("avg_r"), "oos_pf": s_oos.get("profit_factor"),
                               "score": objective(s_is), "skipped_min_lot": results[k].skipped["min_lot"]})
         grid = pd.DataFrame(grid_rows)
+        n_trials = log_trials(cls.name, symbol, grid)
         best = int(grid["score"].idxmax())
         chosen = results[best]
         s_is, s_oos = summarize(chosen, IS.start, IS.end), summarize(chosen, OOS.start, OOS.end)
@@ -114,6 +136,8 @@ def main():
         lines += [f"## {cls.name} on {symbol}: **{verdict}**", "",
                   (cls.__doc__ or "").strip().splitlines()[0], "",
                   f"Chosen on in-sample only: `{combos[best]}`", "",
+                  f"Parameter sets tried for this strategy/market so far (all runs, logged in "
+                  f"reports/trials.csv): {n_trials}. More tries need stronger evidence.", "",
                   "```", format_table(compare_table({"in-sample": s_is, "out-of-sample": s_oos})), "```", "",
                   f"Walk-forward stitched out-of-sample: {wf_line}", "",
                   "Whole grid (robustness: are neighbours similar?):", "",
