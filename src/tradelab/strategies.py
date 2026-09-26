@@ -200,6 +200,151 @@ class LondonBreakout(Strategy):
         return out
 
 
+# --------------------------------------------------------------------------
+# E. Auction-failure price-action proxy (NAS100, M5 with M15 swings)
+# --------------------------------------------------------------------------
+def _confirmed_pivots(m15: pd.DataFrame, k: int) -> list[tuple]:
+    """Fractal pivots on M15, each with the M5 bar label at which it is known.
+
+    A pivot at M15 bar j needs k bars on each side, so it is confirmed when
+    bar j+k closes; the last M5 bar inside bar j+k starts 10 minutes after it.
+    Returns (confirm_time, kind, price, pivot_time) sorted by confirm time.
+    """
+    h, l = m15["high"].to_numpy(), m15["low"].to_numpy()
+    idx = m15.index
+    out = []
+    for j in range(k, len(m15) - k):
+        win_h, win_l = h[j - k:j + k + 1], l[j - k:j + k + 1]
+        conf = idx[j + k] + pd.Timedelta(minutes=10)
+        if h[j] == win_h.max() and (win_h == h[j]).sum() == 1:
+            out.append((conf, "H", h[j], idx[j]))
+        if l[j] == win_l.min() and (win_l == l[j]).sum() == 1:
+            out.append((conf, "L", l[j], idx[j]))
+    out.sort(key=lambda x: (x[0], x[3]))
+    return out
+
+
+@dataclass
+class AuctionFailureProxy(Strategy):
+    """Price-action skeleton of the "auction failure" idea, without order flow.
+
+    Structure (M15, fractal pivots, k each side): a long leg is the latest
+    confirmed swing high H and the swing low L before it, with a higher high
+    and higher low than the previous pivots. Discount zone = 0.705-0.886
+    retracement of L->H. A 5-min close below the 0.886 level voids the leg.
+    Trigger (M5, 16:30-17:55 server = 09:30-10:55 New York):
+      Bar A: low inside the zone, closes bullish.
+      Bar B: within m bars of A, dips below A's close but holds above A's
+      low (sellers fail higher), closes bullish.
+    Entry next bar open. Stop 0.1 x ATR(14) below A's low. Target H; skip if
+    H is less than min_r x risk away. Max 2 signals a day. Flat at 18:30
+    server (11:30 New York). Shorts mirrored.
+    Dropped from the original spec because CFD data has no real volume:
+    delta, footprint imbalances, volume POC/value area, 20k volume filter.
+    """
+    name: str = "E_auction_failure_proxy"
+    timeframe: str = "5min"
+
+    GRID = {"pivot_k": [2, 3], "window_m": [2, 3], "min_r": [1.0, 1.5]}
+
+    def signals(self, bars: pd.DataFrame) -> pd.DataFrame:
+        p = {"pivot_k": 3, "window_m": 3, "min_r": 1.0} | self.params
+        k, m, min_r = int(p["pivot_k"]), int(p["window_m"]), float(p["min_r"])
+        m15 = bars.resample("15min", label="left", closed="left").agg(
+            {"open": "first", "high": "max", "low": "min", "close": "last"}).dropna()
+        pivots = _confirmed_pivots(m15, k)
+
+        o, h, l, c = (bars[x].to_numpy() for x in ("open", "high", "low", "close"))
+        a14 = atr(bars, 14).to_numpy()
+        times = bars.index
+        t = _hhmm(times)
+        n = len(bars)
+        entry = np.zeros(n, dtype=int)
+        stop = np.full(n, np.nan)
+        target = np.full(n, np.nan)
+
+        highs, lows = [], []            # confirmed pivots so far: (pivot_time, price)
+        long_leg = short_leg = None     # (L, H) or (H, L) with zone levels
+        a_long = a_short = None         # (bar index, low/high, close) of Bar A
+        pi = 0
+        day, day_count = None, 0
+        for i in range(n):
+            while pi < len(pivots) and pivots[pi][0] <= times[i]:
+                _, kind, price, ptime = pivots[pi]
+                pi += 1
+                if kind == "H":
+                    highs.append((ptime, price))
+                    lo_before = [x for x in lows if x[0] < ptime]
+                    if len(highs) >= 2 and len(lo_before) >= 2:
+                        L, H = lo_before[-1][1], price
+                        if H > highs[-2][1] and L > lo_before[-2][1] and H > L:
+                            rng = H - L
+                            long_leg = (L, H, H - 0.705 * rng, H - 0.886 * rng)
+                            a_long = None
+                else:
+                    lows.append((ptime, price))
+                    hi_before = [x for x in highs if x[0] < ptime]
+                    if len(lows) >= 2 and len(hi_before) >= 2:
+                        H, L = hi_before[-1][1], price
+                        if L < lows[-2][1] and H < hi_before[-2][1] and H > L:
+                            rng = H - L
+                            short_leg = (H, L, L + 0.705 * rng, L + 0.886 * rng)
+                            a_short = None
+                highs, lows = highs[-3:], lows[-3:]
+
+            if times[i].normalize() != day:
+                day, day_count = times[i].normalize(), 0
+            # invalidation: close beyond the 0.886 level
+            if long_leg and c[i] < long_leg[3]:
+                long_leg, a_long = None, None
+            if short_leg and c[i] > short_leg[3]:
+                short_leg, a_short = None, None
+            in_window = 1630 <= t[i] <= 1755
+            if not in_window or np.isnan(a14[i]):
+                a_long = a_short = None
+                continue
+
+            # ---- longs
+            if long_leg:
+                L, H, z_top, z_bot = long_leg
+                if a_long and i - a_long[0] <= m and a_long[0] < i:
+                    a_i, a_low, a_close = a_long
+                    if l[i] > a_low and l[i] < a_close and c[i] > o[i]:
+                        s = a_low - 0.1 * a14[i]
+                        if (H - c[i]) >= min_r * (c[i] - s) and day_count < 2:
+                            entry[i], stop[i], target[i] = 1, s, H
+                            day_count += 1
+                            a_long = None
+                            continue
+                elif a_long and i - a_long[0] > m:
+                    a_long = None
+                if z_bot <= l[i] <= z_top and c[i] > o[i]:
+                    a_long = (i, l[i], c[i])
+            # ---- shorts
+            if short_leg:
+                H, L, z_bot, z_top = short_leg      # z_bot = 0.705 level, z_top = 0.886
+                if a_short and i - a_short[0] <= m and a_short[0] < i:
+                    a_i, a_high, a_close = a_short
+                    if h[i] < a_high and h[i] > a_close and c[i] < o[i]:
+                        s = a_high + 0.1 * a14[i]
+                        if (c[i] - L) >= min_r * (s - c[i]) and day_count < 2:
+                            entry[i], stop[i], target[i] = -1, s, L
+                            day_count += 1
+                            a_short = None
+                            continue
+                elif a_short and i - a_short[0] > m:
+                    a_short = None
+                if z_bot <= h[i] <= z_top and c[i] < o[i]:
+                    a_short = (i, h[i], c[i])
+
+        out = _empty(bars)
+        out["entry"], out["stop"], out["target"] = entry, stop, target
+        flat = t >= 1825                    # exit at the 18:30 bar open (11:30 NY)
+        out["exit_long"] = flat
+        out["exit_short"] = flat
+        return out
+
+
 # Which market each candidate is tested on (fixed in advance).
 CANDIDATES = [
     (DonchianTrend, "XAUUSD"),
@@ -207,4 +352,5 @@ CANDIDATES = [
     (NYOpeningRange, "NAS100"),
     (NYOpeningRange, "US30"),
     (LondonBreakout, "GBPJPY"),
+    (AuctionFailureProxy, "NAS100"),
 ]
