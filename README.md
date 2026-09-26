@@ -41,18 +41,22 @@ download has to run from your own internet connection. The files are stored
 compactly (integer prices + zstd, about 2–4 MB per symbol-year) so they can be
 committed and used by the cloud session.
 
-Windows (PowerShell, from the repo folder):
+macOS (Terminal, from the repo folder):
 
-```powershell
+```bash
 git checkout claude/the5ers-trading-portfolio-q4043n
 git pull
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python scripts\download_dukascopy.py --symbols EURUSD GBPJPY XAUUSD NAS100 US30 --start 2018
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python scripts/download_dukascopy.py --symbols EURUSD NAS100 --start 2018
+ls data/m1/*                       # should list 2018.parquet ... per symbol
 git add data/m1
-git commit -m "Add Dukascopy M1 data 2018+"
+git commit -m "Add Dukascopy M1 data"
 git push
 ```
+
+Windows (PowerShell): the same, with `python` instead of `python3` and
+`.venv\Scripts\python` / `.venv\Scripts\pip` instead of `.venv/bin/...`.
 
 Takes roughly 10–30 minutes per symbol. If it stops (network, throttling),
 just run the same command again: finished days are cached in `data/raw/`.

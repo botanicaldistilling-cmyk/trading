@@ -140,8 +140,18 @@ def download_year(inst: Instrument, year: int, out_dir: Path | None = None,
     raw_dir = raw_dir or DATA_DIR / "raw"
     last = min(dt.date(year, 12, 31), end or dt.date.today() - dt.timedelta(days=1))
     days = [d.date() for d in pd.date_range(dt.date(year, 1, 1), last) if d.weekday() != 5]
+    done = [0]
+
+    def one(d: dt.date) -> pd.DataFrame:
+        f = download_day(inst, d, raw_dir)
+        done[0] += 1
+        if done[0] % 20 == 0 or done[0] == len(days):
+            print(f"  {inst.name} {year}: {done[0]}/{len(days)} days", end="\r", flush=True)
+        return f
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        frames = list(pool.map(lambda d: download_day(inst, d, raw_dir), days))
+        frames = list(pool.map(one, days))
+    print()
     frames = [f for f in frames if not f.empty]
     df = pd.concat(frames).sort_index() if frames else pd.DataFrame()
     df = df[~df.index.duplicated()]
