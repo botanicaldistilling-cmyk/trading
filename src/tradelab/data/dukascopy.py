@@ -85,7 +85,7 @@ def _fetch(url: str, cache: Path, retries: int = 8) -> bytes:
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 tradelab"})
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 blob = resp.read()
             break
         except urllib.error.HTTPError as e:
@@ -94,7 +94,8 @@ def _fetch(url: str, cache: Path, retries: int = 8) -> bytes:
                 break
             if attempt == retries - 1:
                 raise
-        except (urllib.error.URLError, TimeoutError, ConnectionError):
+        except OSError:
+            # URLError, timeouts (socket.timeout on Python 3.9), resets, SSL errors
             if attempt == retries - 1:
                 raise
         time.sleep(delay)

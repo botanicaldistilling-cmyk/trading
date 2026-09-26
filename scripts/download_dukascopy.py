@@ -31,7 +31,7 @@ def main():
     ap.add_argument("--symbols", nargs="+", default=["EURUSD", "GBPJPY", "XAUUSD", "NAS100"])
     ap.add_argument("--start", type=int, default=2018)
     ap.add_argument("--end", type=int, default=dt.date.today().year)
-    ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--workers", type=int, default=2)
     args = ap.parse_args()
 
     todo = [insts[s] for s in args.symbols]

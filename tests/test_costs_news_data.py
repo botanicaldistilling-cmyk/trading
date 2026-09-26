@@ -89,3 +89,27 @@ def test_compact_storage_roundtrip(tmp_path):
     out = load_compact(tmp_path / "x.parquet")
     assert (out.index == idx).all()
     np.testing.assert_allclose(out[df.columns].to_numpy(), df.to_numpy(), atol=1e-9)
+
+
+def test_fetch_retries_on_timeout(tmp_path, monkeypatch):
+    import socket
+    import urllib.request
+    from tradelab.data import dukascopy
+
+    calls = {"n": 0}
+
+    class Resp:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b"payload"
+
+    def fake_urlopen(req, timeout):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise socket.timeout("The read operation timed out")
+        return Resp()
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(dukascopy.time, "sleep", lambda s: None)
+    assert dukascopy._fetch("https://x", tmp_path / "f.bi5") == b"payload"
+    assert calls["n"] == 3
